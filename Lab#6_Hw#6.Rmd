@@ -1,0 +1,398 @@
+---
+title: "Lab#6_Hw#6: Logit & Probit Models"
+author: "Hassan Fayyaz"
+date: "10/31/2021"
+output: html_document
+
+#1. What are the names of the people in your lab group?
+
+'Hassan Fayyaz, Thakur Prasad Ghimire, & Rimo Akther'
+
+#2. Write up the results of your work in Lab 6. Explain each step. Impress me. Include some predicted values, to best explain some of your interaction effects.
+
+rm(list = ls(all = TRUE))
+setwd("C:/Users/hassa/Desktop/Fall 2021/1_Econometrics_(B2000)/Homeworks/1_HW")
+load("Household_Pulse_data.RData")
+
+######################################################
+#Loading Packages
+######################################################
+
+library(dplyr)
+
+'Attaching package: dplyr
+
+The following objects are masked from package:stats:
+
+    filter, lag
+
+The following objects are masked from package:base:
+
+    intersect, setdiff, setequal, union'
+
+install.packages('ISLR')
+library('ISLR')
+
+'WARNING: Rtools is required to build R packages but is not currently installed. Please download and install the appropriate version of Rtools before proceeding:
+
+https://cran.rstudio.com/bin/windows/Rtools/
+Installing package into ‘C:/Users/hassa/Documents/R/win-library/4.1’
+(as ‘lib’ is unspecified)
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.1/ISLR_1.4.zip'
+Content type 'application/zip' length 2924130 bytes (2.8 MB)
+downloaded 2.8 MB
+
+package ‘ISLR’ successfully unpacked and MD5 sums checked
+
+The downloaded binary packages are in
+	C:\Users\hassa\AppData\Local\Temp\RtmpqUF4Ri\downloaded_packages'
+
+data <- ISLR::Default'
+
+require(caret)
+
+'Loading required package: caret
+Loading required package: lattice'
+
+install.packages("car")
+
+'WARNING: Rtools is required to build R packages but is not currently installed. Please download and install the appropriate version of Rtools before proceeding:
+
+https://cran.rstudio.com/bin/windows/Rtools/
+Installing package into ‘C:/Users/hassa/Documents/R/win-library/4.1’
+(as ‘lib’ is unspecified)
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.1/car_3.0-11.zip'
+Content type 'application/zip' length 1569984 bytes (1.5 MB)
+downloaded 1.5 MB
+
+package ‘car’ successfully unpacked and MD5 sums checked
+
+The downloaded binary packages are in
+	C:\Users\hassa\AppData\Local\Temp\RtmpqUF4Ri\downloaded_packages'
+	
+library(car)
+
+'Loading required package: carData
+
+Attaching package: ‘car’
+
+The following object is masked from ‘package:dplyr’:
+
+    recode'
+
+
+library(ggplot2)
+
+install.packages("pscl")
+
+'WARNING: Rtools is required to build R packages but is not currently installed. Please download and install the appropriate version of Rtools before proceeding:
+
+https://cran.rstudio.com/bin/windows/Rtools/
+Installing package into ‘C:/Users/hassa/Documents/R/win-library/4.1’
+(as ‘lib’ is unspecified)
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.1/pscl_1.5.5.zip'
+Content type 'application/zip' length 3571482 bytes (3.4 MB)
+downloaded 3.4 MB
+
+package ‘pscl’ successfully unpacked and MD5 sums checked
+
+The downloaded binary packages are in
+	C:\Users\hassa\AppData\Local\Temp\RtmpqUF4Ri\downloaded_packages'
+
+######################################################
+#Loading & Understanding Data
+######################################################
+
+covid_dat_use <- Household_Pulse_data
+attach(covid_dat_use)
+summary(covid_dat_use)
+
+'RHISPANIC       RRACE                EEDUC               MS        EGENID_BIRTH       GENID_DESCRIBE       SEXUAL_ORIENTATION                      KIDS_LT5Y                         KIDS_5_11Y   
+ Not Hispanic:62660   White:56938   less than hs:  411   NA       :  881   male  :27592   NA         : 1131   NA            : 1506    NA                        :62342   NA                       :58467  
+ Hispanic    : 6454   Black: 5412   some hs     :  936   married  :40036   female:41522   male       :26796   gay or lesbian: 2343    Yes children under 5 in HH: 6772   Yes children 5 - 11 in HH:10647  
+                      Asian: 3561   HS diploma  : 7857   widowed  : 3872                  female     :40263   straight      :61238                                                                        
+                      Other: 3203   some coll   :14596   divorced :10310                  transgender:  202   bisexual      : 2288                                                                        
+                                    assoc deg   : 7508   separated: 1214                  other      :  722   something else:  871                                                                        
+                                    bach deg    :20075   never    :12801                                      dont know     :  868                                                                        
+                                    adv deg     :17731                                                                                                                                                    
+                     KIDS_12_17Y                                 ENROLLNONE                  RECVDVACC                          DOSESRV                          GETVACRV    
+ NA                        :58046   NA                                :64285   NA                 :  851   NA                       : 9105   NA                      :61159  
+ Yes children 12 - 17 in HH:11068   children not in any type of school: 4829   yes got vaxx       :60326   yes got all doses        :57762   definitely will get vaxx:  609  
+                                                                               no did not get vaxx: 7937   yes plan to get all doses: 1993   probably will get vaxx  :  731  
+                                                                                                           no will not get all doses:  254   unsure about vaxx       : 1584  
+                                                                                                                                             probably not            : 1599  
+                                                                                                                                             definitely not          : 3432  
+                                                                                                                                                                             
+                               KIDDOSES                        KIDGETVAC                          HADCOVID                      WRKLOSSRV                              ANYWORK     
+ NA                                :58318   NA                      :65384   NA                       : 1363   NA                    : 1961   NA                           : 2135  
+ Yes kids got or will get all doses: 7135   definitely will get vaxx:  487   yes doctor told had covid: 9122   yes recent HH job loss: 8058   yes employment in last 7 days:39237  
+ no kids did not or will not       : 3661   probably will get vaxx  :  439   no did not               :58221   no recent HH job loss :59095   no employment in last 7 days :27742  
+                                            unsure about vaxx       :  736   not sure                 :  408                                                                       
+                                            probably not            :  593                                                                                                         
+                                            definitely not          : 1036                                                                                                         
+                                            dont know yet           :  439                                                                                                         
+                KINDWORK                RSNNOWRKRV                                         CHLDCARE                              CURFOODSUF                                                  CHILDFOOD    
+ NA                 :30540   NA              :42659   NA                                       :58419   NA                            : 6770   NA                                                 :64258  
+ work for govt      : 6378   retired         :15024   yes impacts to childcare because pandemic: 2566   had enough food               :49234   often kids not eating enough because couldnt afford:  271  
+ work for private co:21370   other           : 4027   no                                       : 8129   had enough but not what wanted: 9947   sometimes kids not eating enough                   : 1191  
+ work for nonprofit : 5055   sick or disabled: 1451                                                     sometimes not enough food     : 2486   kids got enough food                               : 3394  
+ self employed      : 4966   caring for kids : 1329                                                     often not enough food         :  677                                                              
+ work in family biz :  805   laid off        : 1164                                                                                                                                                       
+                             (Other)         : 3460                                                                                                                                                       
+                                            ANXIOUS                                                  WORRY                                 TENURE                                     LIVQTRRV    
+ NA                                             : 7946   NA                                             : 8016   NA                           :11103   live in detached 1 family          :41348  
+ no anxiety over past 2 wks                     :26611   no worry over past 2 wks                       :31876   housing owned free and clear :16738   NA                                 :11336  
+ several days anxiety over past 2 wks           :19794   several days worried over past 2 wks           :17936   housing owned with mortgage  :28016   live in bldg w 5+ apts             : 6731  
+ more than half the days anxiety over past 2 wks: 6140   more than half the days worried over past 2 wks: 4979   housing rented               :12579   live in 1 family attached to others: 4628  
+ nearly every day anxiety                       : 8623   nearly every day worry                         : 6307   housing occupied without rent:  678   live in mobile home                : 1781  
+                                                                                                                                                       live in building with 3-4 apts     : 1737  
+                                                                                                                                                       (Other)                            : 1553  
+            RENTCUR                     MORTCUR                                             EVICT                                                FORCLOSE               EST_ST     
+ NA             :56572   NA                 :41200   NA                                        :67859   NA                                           :67695   California   : 5359  
+ current on rent:11239   current on mortgage:26462   very likely evicted in next 2 months      :  207   very likely forclosed in next 2 months       :   65   Texas        : 3766  
+ behind on rent : 1303   behind on mortgage : 1452   somewhat likely evicted in next 2 months  :  377   somewhat likely forclosed in next 2 months   :  218   Florida      : 2728  
+                                                     not very likely evicted in next 2 months  :  345   not very likely forclosed in next 2 months   :  474   Washington   : 2634  
+                                                     not at all likely evicted in next 2 months:  326   not at all forclosed evicted in next 2 months:  662   Massachusetts: 1965  
+                                                                                                                                                              Oregon       : 1934  
+                                                                                                                                                              (Other)      :50728  
+                   PRIVHLTH                      PUBHLTH            REGION                          INCOME      Num_kids_Pub_School Num_kids_Priv_School Num_kids_homeschool        Works_onsite  
+ has private health ins:46869   has public health ins:23346   Northeast:10478   NA                     :20335   Min.   :0.00        Min.   :0.00         Min.   :0.00        NA           : 6350  
+ no private health ins :11275   no public health ins :33381   South    :22680   HH income $75 - 99.9   :10117   1st Qu.:1.00        1st Qu.:0.00         1st Qu.:0.00        worked onsite:34918  
+ NA                    :10970   NA                   :12387   Midwest  :13651   HH income $35k - 49.9  : 9330   Median :2.00        Median :1.00         Median :1.00        no           :27846  
+                                                              West     :22305   HH income $50k - 74.9  : 7830   Mean   :1.71        Mean   :1.03         Mean   :0.87                             
+                                                                                HH income $150 - 199   : 6117   3rd Qu.:2.00        3rd Qu.:2.00         3rd Qu.:2.00                             
+                                                                                HH income $25k - $34.9k: 5805   Max.   :4.00        Max.   :2.00         Max.   :2.00                             
+                                                                                (Other)                : 9580   NA's   :55108       NA's   :66430        NA's   :67421                            
+          works_remote            Shop_in_store                   eat_in_restaurant
+ NA             : 8022   NA              : 6873   NA                       : 7217  
+ worked remotely:22863   shopped in store:53576   eat at restaurant indoors:32405  
+ no             :38229   no              : 8665   no                       :29492  
+                                                                                   
+                                                                                   
+                                                                                   
+                                                                                   
+> '
+
+
+######################################################
+'Using Logit & Probit Model' 
+######################################################
+
+#Question? Does a high income make one less stressful and anxious?
+
+covid_dat_use$vaxx <- (covid_dat_use$RECVDVACC == "yes got vaxx")
+is.na(covid_dat_use$vaxx) <- which(covid_dat_use$RECVDVACC == "NA") 
+
+pick_use1 <- (covid_dat_use$REGION == "Northeast") # just for example!
+dat_use1 <- subset(covid_dat_use, pick_use1)
+
+
+#I am focusing on INCOME, WORRY, and ANXIETY Level
+model_logit <- glm(INCOME ~ WORRY + ANXIOUS, family = "binomial", data = covid_dat_use)
+options(scipen=999)
+
+pscl::pR2(model_logit)["McFadden"]
+#0.2633259 (Since the value of McFadden’s R2 is high (between 0.2 & 0.4) it means that the predictive power of this model is high)
+
+summary(model_logit)
+
+'Call:
+glm(formula = INCOME ~ WORRY + ANXIOUS, family = "binomial", 
+    data = covid_dat_use)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-1.9333  -0.1136   0.6269   0.6706   3.1770  
+
+Coefficients:
+                                                       Estimate Std. Error z value             Pr(>|z|)    
+(Intercept)                                             -5.0403     0.1381 -36.497 < 0.0000000000000002 ***
+WORRYno worry over past 2 wks                            2.2003     0.1852  11.877 < 0.0000000000000002 ***
+WORRYseveral days worried over past 2 wks                1.8768     0.1861  10.083 < 0.0000000000000002 ***
+WORRYmore than half the days worried over past 2 wks     1.6610     0.1897   8.757 < 0.0000000000000002 ***
+WORRYnearly every day worry                              1.3780     0.1909   7.219    0.000000000000523 ***
+ANXIOUSno anxiety over past 2 wks                        4.3672     0.2249  19.422 < 0.0000000000000002 ***
+ANXIOUSseveral days anxiety over past 2 wks              4.5413     0.2254  20.148 < 0.0000000000000002 ***
+ANXIOUSmore than half the days anxiety over past 2 wks   4.4347     0.2277  19.473 < 0.0000000000000002 ***
+ANXIOUSnearly every day anxiety                          4.5156     0.2288  19.736 < 0.0000000000000002 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 83751  on 69113  degrees of freedom
+Residual deviance: 61697  on 69105  degrees of freedom
+AIC: 61715
+
+Number of Fisher Scoring iterations: 7
+'
+
+
+table(covid_dat_use$INCOME,covid_dat_use$WORRY, covid_dat_use$ANXIOUS)
+
+', ,  = NA
+
+                          
+                             NA no worry over past 2 wks several days worried over past 2 wks more than half the days worried over past 2 wks nearly every day worry
+  NA                       7869                       10                                    7                                               2                      5
+  HH income less than $25k    7                        2                                    1                                               0                      1
+  HH income $25k - $34.9k     4                        2                                    1                                               0                      0
+  HH income $35k - 49.9       5                        4                                    5                                               1                      0
+  HH income $50k - 74.9       1                        0                                    3                                               0                      0
+  HH income $75 - 99.9        6                        3                                    1                                               0                      0
+  HH income $100k - 149       0                        1                                    0                                               1                      0
+  HH income $150 - 199        4                        0                                    0                                               0                      0
+  HH income $200k +           0                        0                                    0                                               0                      0
+
+, ,  = no anxiety over past 2 wks
+
+                          
+                             NA no worry over past 2 wks several days worried over past 2 wks more than half the days worried over past 2 wks nearly every day worry
+  NA                         35                     4442                                  332                                              37                     35
+  HH income less than $25k    6                     1512                                  118                                              12                     13
+  HH income $25k - $34.9k     3                     2016                                  154                                              16                     14
+  HH income $35k - 49.9       6                     3705                                  204                                              16                     15
+  HH income $50k - 74.9       6                     3354                                  176                                              11                     10
+  HH income $75 - 99.9        4                     4534                                  198                                              11                     11
+  HH income $100k - 149       8                     2369                                   84                                               4                      3
+  HH income $150 - 199        5                     3017                                  106                                               4                      5
+  HH income $200k +           0                        0                                    0                                               0                      0
+
+, ,  = several days anxiety over past 2 wks
+
+                          
+                             NA no worry over past 2 wks several days worried over past 2 wks more than half the days worried over past 2 wks nearly every day worry
+  NA                         13                      942                                 2549                                             155                     86
+  HH income less than $25k    3                      375                                 1018                                              57                     29
+  HH income $25k - $34.9k     6                      502                                 1270                                              78                     23
+  HH income $35k - 49.9       1                      929                                 2051                                              74                     35
+  HH income $50k - 74.9       3                      805                                 1687                                              56                     20
+  HH income $75 - 99.9        2                     1215                                 2100                                              65                     12
+  HH income $100k - 149       2                      631                                  999                                              41                      3
+  HH income $150 - 199        1                      848                                 1072                                              30                      6
+  HH income $200k +           0                        0                                    0                                               0                      0
+
+, ,  = more than half the days anxiety over past 2 wks
+
+                          
+                             NA no worry over past 2 wks several days worried over past 2 wks more than half the days worried over past 2 wks nearly every day worry
+  NA                          3                       89                                  598                                             647                    122
+  HH income less than $25k    1                       32                                  248                                             263                     38
+  HH income $25k - $34.9k     1                       30                                  274                                             334                     49
+  HH income $35k - 49.9       0                       63                                  443                                             402                     44
+  HH income $50k - 74.9       0                       60                                  340                                             320                     24
+  HH income $75 - 99.9        0                       75                                  422                                             348                     24
+  HH income $100k - 149       0                       28                                  185                                             134                      9
+  HH income $150 - 199        0                       56                                  258                                             161                     15
+  HH income $200k +           0                        0                                    0                                               0                      0
+
+, ,  = nearly every day anxiety
+
+                          
+                             NA no worry over past 2 wks several days worried over past 2 wks more than half the days worried over past 2 wks nearly every day worry
+  NA                          3                       61                                  233                                             412                   1648
+  HH income less than $25k    0                       14                                   81                                             146                    623
+  HH income $25k - $34.9k     2                       17                                   99                                             212                    698
+  HH income $35k - 49.9       3                       35                                  154                                             284                    851
+  HH income $50k - 74.9       0                       19                                  130                                             193                    612
+  HH income $75 - 99.9        2                       31                                  167                                             230                    656
+  HH income $100k - 149       0                       18                                   67                                             114                    279
+  HH income $150 - 199        1                       30                                  101                                             108                    289
+  HH income $200k +           0                        0                                    0                                               0                      0
+'
+
+plot(model_logit, 2)
+
+require(stargazer)
+
+'Loading required package: stargazer
+
+Please cite as: 
+
+ Hlavac, Marek (2018). stargazer: Well-Formatted Regression and Summary Statistics Tables.
+ R package version 5.2.2. https://CRAN.R-project.org/package=stargazer 
+'
+
+stargazer(model_logit, type = "text")
+
+'
+
+==================================================================================
+                                                           Dependent variable:    
+                                                       ---------------------------
+                                                                 INCOME           
+----------------------------------------------------------------------------------
+WORRYno worry over past 2 wks                                   2.200***          
+                                                                 (0.185)          
+                                                                                  
+WORRYseveral days worried over past 2 wks                       1.877***          
+                                                                 (0.186)          
+                                                                                  
+WORRYmore than half the days worried over past 2 wks            1.661***          
+                                                                 (0.190)          
+                                                                                  
+WORRYnearly every day worry                                     1.378***          
+                                                                 (0.191)          
+                                                                                  
+ANXIOUSno anxiety over past 2 wks                               4.367***          
+                                                                 (0.225)          
+                                                                                  
+ANXIOUSseveral days anxiety over past 2 wks                     4.541***          
+                                                                 (0.225)          
+                                                                                  
+ANXIOUSmore than half the days anxiety over past 2 wks          4.435***          
+                                                                 (0.228)          
+                                                                                  
+ANXIOUSnearly every day anxiety                                 4.516***          
+                                                                 (0.229)          
+                                                                                  
+Constant                                                        -5.040***         
+                                                                 (0.138)          
+                                                                                  
+----------------------------------------------------------------------------------
+Observations                                                     69,114           
+Log Likelihood                                                 -30,848.620        
+Akaike Inf. Crit.                                              61,715.230         
+==================================================================================
+Note:                                                  *p<0.1; **p<0.05; ***p<0.01
+> '
+
+confint(model_logit,level=0.99)
+
+'Waiting for profiling to be done...
+                                                            0.5 %    99.5 %
+(Intercept)                                            -5.4180476 -4.704000
+WORRYno worry over past 2 wks                           1.7295013  2.687223
+WORRYseveral days worried over past 2 wks               1.4035796  2.365819
+WORRYmore than half the days worried over past 2 wks    1.1784635  2.158799
+WORRYnearly every day worry                             0.8923483  1.878852
+ANXIOUSno anxiety over past 2 wks                       3.7919433  4.953110
+ANXIOUSseveral days anxiety over past 2 wks             3.9647062  5.128593
+ANXIOUSmore than half the days anxiety over past 2 wks  3.8519731  5.027825
+ANXIOUSnearly every day anxiety                         3.9301429  5.111416
+
+'
+
+confint.default(model_logit)
+
+'                                                           2.5 %    97.5 %
+(Intercept)                                            -5.310962 -4.769610
+WORRYno worry over past 2 wks                           1.837205  2.563371
+WORRYseveral days worried over past 2 wks               1.511942  2.241578
+WORRYmore than half the days worried over past 2 wks    1.289204  2.032732
+WORRYnearly every day worry                             1.003921  1.752177
+ANXIOUSno anxiety over past 2 wks                       3.926523  4.807973
+ANXIOUSseveral days anxiety over past 2 wks             4.099552  4.983096
+ANXIOUSmore than half the days anxiety over past 2 wks  3.988296  4.881010
+ANXIOUSnearly every day anxiety                         4.067149  4.964010
+
+'
+
+
+plot(coef(model_logit))
+
+#Conclusion: From the research above, we have learned that people who have an average income between $100k - 149k are the least anxious and worried. Therefore, earning too much money and too little can increase one's anxiety and stress levels. However, making too little is still worst than earning too much because earning more money does not increase the stress & anxiety levels as much as otherwise if one earns too little. 
+
+3. Each person in the group should find 2 academic articles related to your current choice of final project. Write a short paragraph on each, concentrating on what data is used (and whether it is accessible), what econometric techniques, and what questions are addressed. Include names of people in your project group (if different from lab group)
+
+#Answered separately as a pdf.
